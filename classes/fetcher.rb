@@ -60,6 +60,7 @@ class Fetcher
         doc = Nokogiri::HTML(response.body)
 
         data_strings = ""
+        has_valid_data = false
         doc.css('.dt-row').each do |row|
           label_element = row.at_css('.dt-row__text')
           value_element = row.at_css('.dt-param-value')
@@ -67,8 +68,10 @@ class Fetcher
             label = label_element['data-label'] || label_element.text.strip
             value = value_element && !value_element.text.strip.empty? ? value_element.text.strip : 'brak danych'
             data_strings += "#{label}: #{value};"
+            has_valid_data = true if value != 'brak danych'
           end
         end
+        return '' unless has_valid_data
         return data_strings
       else
         puts "Błąd HTTP: #{response.code} - URL: #{link}, próba #{attempts}"
@@ -77,7 +80,7 @@ class Fetcher
 
     rescue => e
       puts "Błąd: #{e.message} - URL: #{link}, próba #{attempts}"
-      sleep(attempts / 5.0)
+      sleep(attempts / 2.0)
       retry if attempts < max_attempts
       'Błąd w pobieraniu danych'
     end

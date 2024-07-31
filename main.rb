@@ -19,7 +19,7 @@ class Main
     @max_semicolons = 0
     @max_semicolons_params = ''
     @mutex = Mutex.new
-    @max_threads = 250
+    @max_threads = 300
     @existing_links = Set.new
   end
 
@@ -53,8 +53,8 @@ class Main
   #
   # [link] Link do strony z parametrami.
   def process_link(link)
-    @licznik += 1
     return if @existing_links.include?(link)
+    @mutex.synchronize { @licznik += 1 }
     parameters = Fetcher.extract_parameters(link)
     if !parameters.nil? && !parameters.empty?
       check_semicolons(parameters, link)
@@ -79,11 +79,15 @@ class Main
     # Start wątków
     @max_threads.times do
       thread_pool << Thread.new do
-        until queue.empty?
+        while true
           link = queue.pop(true) rescue nil
-          process_link(link) if link
+          break if link.nil?
+          process_link(link)
         end
       end
+      ensure
+      csv = Csv.new(@params, @max_semicolons_params)
+      csv.save_to_csv(@csv_filename)
     end
 
     # Czekaj na zakończenie wszystkich wątków
